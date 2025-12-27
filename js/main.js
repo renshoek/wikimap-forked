@@ -18,8 +18,8 @@ const options = {
     shape: 'dot',
     scaling: {
       min: 10, // Smaller minimum for isolated/leaf nodes
-      max: 60, // Larger maximum for highly connected nodes
-      label: { min: 14, max: 30, drawThreshold: 9, maxVisible: 20 },
+      max: 70, // Larger maximum for highly connected nodes
+      label: { min: 14, max: 40, drawThreshold: 9, maxVisible: 20 },
     },
     font: { size: 14, face: getComputedStyle(document.body).fontFamily },
   },
@@ -30,14 +30,14 @@ const options = {
   },
   physics: {
     // Speed adjustments
-    maxVelocity: 65,   // Allow nodes to move faster (default 50)
-    timestep: 0.6,     // Faster simulation speed (default 0.5)
+    maxVelocity: 90,   // Increased to 70 to make movement faster
+    timestep: 0.6,     // Increased to 0.6 to speed up simulation
     adaptiveTimestep: true,
     barnesHut: {
       gravitationalConstant: -2000,
-      springConstant: 0.02, // Keep loose springs
-      springLength: 300,    // Keep long edges
-      damping: 0.08,        // Reduce drag to make movement snappier (default 0.09)
+      springConstant: 0.005, // Keep loose springs for stability
+      springLength: 300,     // Keep long edges
+      damping: 0.3,          // Increased to 0.3 to kill bounce/overshoot from higher speed
     },
     stabilization: {
       iterations: 2500,
