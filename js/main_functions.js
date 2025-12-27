@@ -63,13 +63,22 @@ function expandNodeCallback(page, data) {
   // Add all children to network
   const subnodes = [];
   const newedges = [];
-  // Where new nodes should be spawned
-  const [x, y] = getSpawnPosition(page);
+  // Where new nodes should be spawned (now returns a point 40px away)
+  const [startX, startY] = getSpawnPosition(page);
+  
   // Create node objects
   for (let i = 0; i < subpages.length; i += 1) {
     const subpage = subpages[i];
     const subpageID = getNormalizedId(subpage);
     if (!nodes.getIds().includes(subpageID)) { // Don't add if node exists
+      
+      // Add a small random offset (jitter) to prevent nodes from stacking on top of each other
+      // which causes violent "explosions" in the physics engine.
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 5 + Math.random() * 10; // 5-15px jitter
+      const spawnX = startX + radius * Math.cos(angle);
+      const spawnY = startY + radius * Math.sin(angle);
+
       subnodes.push({
         id: subpageID,
         label: wordwrap(decodeURIComponent(subpage), 15),
@@ -77,8 +86,8 @@ function expandNodeCallback(page, data) {
         level,
         color: getColor(level),
         parent: page,
-        x,
-        y,
+        x: spawnX, // Use jittered coordinates
+        y: spawnY,
       });
     }
 
