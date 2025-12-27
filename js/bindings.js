@@ -1,0 +1,135 @@
+/* global nodes, network, isTouchDevice, shepherd */
+/* global expandNode, traceBack, resetProperties, go, goRandom, clearNetwork, unwrap */
+// This script contains (most of) the code that binds actions to events.
+
+let lastClickedNode = null;
+
+// Functions that will be used as bindings
+function expandEvent(params) { // Expand a node (with event handler)
+  if (params.nodes.length) { // Did the click occur on a node?
+    const page = params.nodes[0]; // The id of the node clicked
+
+    // On touch devices, 'hold' triggers this, so we expand immediately.
+    // On desktop, we require a second click on the selected node.
+    if (isTouchDevice || page === lastClickedNode) {
+      expandNode(page);
+    } else {
+      lastClickedNode = page;
+      traceBack(page);
+    }
+  } else {
+    lastClickedNode = null;
+    resetProperties();
+  }
+}
+
+function mobileTraceEvent(params) { // Trace back a node (with event handler)
+  if (params.nodes.length) { // Was the click on a node?
+    // The node clicked
+    const page = params.nodes[0];
+    // Highlight in blue all nodes tracing back to central node
+    traceBack(page);
+  } else {
+    resetProperties();
+  }
+}
+
+function openPageEvent(params) {
+  if (params.nodes.length) {
+    const nodeid = params.nodes[0];
+    const page = encodeURIComponent(unwrap(nodes.get(nodeid).label));
+    const url = `http://en.wikipedia.org/wiki/${page}`;
+    window.open(url, '_blank');
+  }
+}
+
+function removeNodeEvent(params) {
+  // Get the node under the mouse cursor using the pointer coordinates
+  const nodeId = network.getNodeAt(params.pointer.DOM);
+  if (nodeId) {
+    // Safety: Reset properties if we are removing a node involved in the current trace
+    // to prevent errors when resetProperties tries to access the removed node later.
+    if (!window.isReset && (window.selectedNode === nodeId || (window.tracenodes && window.tracenodes.includes(nodeId)))) {
+      resetProperties();
+    }
+
+    nodes.remove(nodeId);
+    // If we removed the node we were just about to expand, clear the state
+    if (lastClickedNode === nodeId) {
+      lastClickedNode = null;
+    }
+  }
+}
+
+// Bind the network events
+function bindNetwork() {
+  if (isTouchDevice) { // Device has touchscreen
+    network.on('hold', expandEvent); // Long press to expand
+    network.on('click', mobileTraceEvent); // Highlight traceback on click
+  } else { // Device does not have touchscreen
+    network.on('click', expandEvent); // Expand on click
+    network.on('hoverNode', params => traceBack(params.node)); // Highlight traceback on hover
+    network.on('blurNode', resetProperties); // un-traceback on un-hover
+  }
+
+  // Bind double-click to open page
+  network.on('doubleClick', openPageEvent);
+
+  // Bind right-click to remove node
+  network.on('oncontext', removeNodeEvent);
+}
+
+function bind() {
+  // Prevent iOS scrolling
+  document.addEventListener('touchmove', e => e.preventDefault());
+
+  // Prevent default context menu to allow right-click to remove nodes
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Bind actions for search component.
+
+  const cf = document.querySelector('.commafield');
+  // Bind go button press
+  const submitButton = document.getElementById('submit');
+  submitButton.addEventListener('click', () => {
+    shepherd.cancel(); // Dismiss the tour if it is in progress
+    go();
+  });
+
+  const randomButton = document.getElementById('random');
+  randomButton.addEventListener('click', goRandom);
+
+  const clearButton = document.getElementById('clear');
+  clearButton.addEventListener('click', clearNetwork);
+
+  // Bind tour start
+  const tourbtn = document.getElementById('tourinit');
+  const helpButton = document.getElementById('help');
+  tourbtn.addEventListener('click', () => shepherd.start());
+  helpButton.addEventListener('click', () => shepherd.start());
+
+  // Bind GitHub button
+  const ghbutton = document.getElementById('github');
+  ghbutton.addEventListener('click', () => window.open('https://github.com/controversial/wikipedia-map', '_blank'));
+
+  // Bind About button
+  const aboutButton = document.getElementById('about');
+  aboutButton.addEventListener('click', () => window.open('https://github.com/controversial/wikipedia-map/blob/master/README.md#usage', '_blank'));
+
+  // Bind Remove Selected Node button (Mobile Friendly)
+  const removeSelectedButton = document.getElementById('remove-selected');
+  if (removeSelectedButton) {
+    removeSelectedButton.addEventListener('click', () => {
+      // Use window.selectedNode (mobile/active hover) OR lastClickedNode (desktop selection)
+      // This ensures functionality even if the node was blurred (deselected) by moving the mouse to the button.
+      const nodeToRemove = window.selectedNode || lastClickedNode;
+      if (nodeToRemove) {
+        // Reset properties BEFORE removing the node to avoid accessing a removed node in resetProperties
+        resetProperties(); 
+        nodes.remove(nodeToRemove);
+        window.selectedNode = null;
+        lastClickedNode = null;
+      }
+    });
+  }
+}
