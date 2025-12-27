@@ -242,7 +242,7 @@ function traceBack(node) {
       const isActive = (id === node) || window.tracenodes.includes(id) || connectedNodes.includes(id);
       return {
         id: id,
-        font: { color: isActive ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.3)' }
+        font: { color: isActive ? 'rgba(0, 0, 0, 1)' : 'rgba(0, 0, 0, 0.25)' }
       };
     });
     nodes.update(nodeUpdates);
