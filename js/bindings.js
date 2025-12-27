@@ -50,23 +50,29 @@ function openPageForId(nodeId) {
   }
 }
 
-// NEW Helper: Open selected node, OR pick random, zoom, select, and open.
+// NEW Helper: Open selected node, OR pick random, zoom, select.
 function openActiveOrRandomNode() {
-  let targetNode = window.selectedNode || lastClickedNode;
+  // Check if we currently have a selection
+  const targetNode = window.selectedNode || lastClickedNode;
 
-  // If no node is selected, pick a random one
-  if (!targetNode) {
+  if (targetNode) {
+    // CASE 1: A node is already selected -> Open it
+    openPageForId(targetNode);
+  } else {
+    // CASE 2: No selection -> Pick Random, Zoom, Select (Do NOT open yet)
     const allIds = nodes.getIds();
     if (allIds.length > 0) {
       // Pick random ID
-      targetNode = allIds[Math.floor(Math.random() * allIds.length)];
+      const randomNodeId = allIds[Math.floor(Math.random() * allIds.length)];
       
-      // Select it visually
-      lastClickedNode = targetNode;
-      traceBack(targetNode);
+      // Update global state
+      lastClickedNode = randomNodeId;
       
-      // Zoom to it
-      network.focus(targetNode, {
+      // Select it visually (highlight yellow path)
+      traceBack(randomNodeId);
+      
+      // Zoom camera to it
+      network.focus(randomNodeId, {
         scale: 1.0,
         animation: {
           duration: 1000,
@@ -74,11 +80,6 @@ function openActiveOrRandomNode() {
         }
       });
     }
-  }
-
-  // Open the page (if we have a target now)
-  if (targetNode) {
-    openPageForId(targetNode);
   }
 }
 
@@ -103,9 +104,10 @@ function removeNodeEvent(params) {
   // Get the node under the mouse cursor using the pointer coordinates
   const nodeId = network.getNodeAt(params.pointer.DOM);
   if (nodeId) {
-    // Safety: Reset properties if we are removing a node involved in the current trace
-    // to prevent errors when resetProperties tries to access the removed node later.
-    if (!window.isReset && (window.selectedNode === nodeId || (window.tracenodes && window.tracenodes.includes(nodeId)))) {
+    // CHANGED: Always reset properties if the graph is in a modified state.
+    // This prevents "stale" highlights/edges from persisting after a node is removed,
+    // which was causing the interface to get stuck.
+    if (!window.isReset) {
       resetProperties();
     }
 
