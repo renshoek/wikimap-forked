@@ -11,6 +11,7 @@ function expandEvent(params) { // Expand a node (with event handler)
 
     // On touch devices, 'hold' triggers this, so we expand immediately.
     // On desktop, we require a second click on the selected node.
+    // Double-click triggers this logic effectively skipping the 'second click' wait because page === lastClickedNode
     if (isTouchDevice || page === lastClickedNode) {
       expandNode(page);
     } else {
@@ -34,12 +35,31 @@ function mobileTraceEvent(params) { // Trace back a node (with event handler)
   }
 }
 
-function openPageEvent(params) {
-  if (params.nodes.length) {
-    const nodeid = params.nodes[0];
-    const page = encodeURIComponent(unwrap(nodes.get(nodeid).label));
+// Helper to open a page by ID
+function openPageForId(nodeId) {
+  if (nodeId) {
+    const page = encodeURIComponent(unwrap(nodes.get(nodeId).label));
     const url = `http://en.wikipedia.org/wiki/${page}`;
     window.open(url, '_blank');
+  }
+}
+
+// Event handler for 't' key press
+function keyOpenPageEvent(e) {
+  // Ignore if typing in an input field
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  if (e.key === 't' || e.key === 'T') {
+    // Open the currently selected node (or the last clicked one if blurred)
+    const nodeToOpen = window.selectedNode || lastClickedNode;
+    openPageForId(nodeToOpen);
+  }
+}
+
+// Retained for double-click binding if needed, though we are switching double-click to expand
+function openPageEvent(params) {
+  if (params.nodes.length) {
+    openPageForId(params.nodes[0]);
   }
 }
 
@@ -76,7 +96,7 @@ function bindNetwork() {
     network.on('click', expandEvent); // Expand on click
     network.on('hoverNode', params => traceBack(params.node)); // Highlight traceback on hover
     
-    // CHANGED: Logic to persist selection on blur
+    // Logic to persist selection on blur
     network.on('blurNode', () => {
       if (lastClickedNode) {
         // If a node is currently selected (clicked), revert highlight to it
@@ -88,8 +108,8 @@ function bindNetwork() {
     });
   }
 
-  // Bind double-click to open page
-  network.on('doubleClick', openPageEvent);
+  // CHANGED: Bind double-click to expandEvent instead of openPageEvent
+  network.on('doubleClick', expandEvent);
 
   // Bind right-click to remove node
   network.on('oncontext', removeNodeEvent);
@@ -101,6 +121,9 @@ function bind() {
 
   // Prevent default context menu to allow right-click to remove nodes
   document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // CHANGED: Add key listener for 't' to open Wikipedia page
+  document.addEventListener('keydown', keyOpenPageEvent);
 
   // Bind actions for search component.
 
