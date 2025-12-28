@@ -180,32 +180,108 @@ function bindNetwork() {
 
 // --- NEW FUNCTION: Bind Suggestions ---
 function bindSuggestions() {
-  const suggestions = [
-    "Barack Obama", "The Beatles", "World War II", "Artificial Intelligence", "Mona Lisa",
-    "Mount Everest", "Leonardo da Vinci", "United States", "Google", "Minecraft",
-    "Psychology", "Black Hole", "Nelson Mandela", "The Moon", "Coffee",
-    "JavaScript", "Ancient Egypt", "Batman", "Albert Einstein", "DNA"
+  const allSuggestions = [
+    // Science & Tech
+    "Physics", "Chemistry", "Biology", "Quantum mechanics", "General relativity", "Evolution", "DNA", "Atom", 
+    "Black hole", "Big Bang", "Periodic table", "Photosynthesis", "Gravity", "Electricity", "Magnetism", 
+    "Thermodynamics", "Plate tectonics", "Climate change", "Artificial intelligence", "Internet", "World Wide Web", 
+    "Computer", "Smartphone", "Blockchain", "Cryptography", "Virtual reality", "3D printing", "Robot", "Nanotechnology", 
+    "Nuclear power", "Space exploration", "Mars rover", "Hubble Space Telescope", "International Space Station", 
+    "GPS", "Bluetooth", "Wi-Fi", "Transistor", "Solar system", "Moon", "Mars", "Jupiter", "Saturn", "Pluto", 
+    "Milky Way", "Andromeda Galaxy", "Nebula", "Supernova", "Comet", "Asteroid", "Exoplanet", "Dark matter",
+    
+    // History & People
+    "World War I", "World War II", "Roman Empire", "Ancient Egypt", "Alexander the Great", "Genghis Khan", "Napoleon", 
+    "Industrial Revolution", "French Revolution", "Cold War", "Apollo 11", "Titanic", "Black Death", "Renaissance", 
+    "Viking Age", "Ottoman Empire", "Aztec Empire", "Maya civilization", "Julius Caesar", "Cleopatra", "Albert Einstein", 
+    "Isaac Newton", "Charles Darwin", "Nikola Tesla", "Marie Curie", "Galileo Galilei", "Stephen Hawking", "Alan Turing", 
+    "Ada Lovelace", "Steve Jobs", "Bill Gates", "Elon Musk", "Martin Luther King Jr.", "Nelson Mandela", "Mahatma Gandhi", 
+    "Winston Churchill", "Abraham Lincoln", "George Washington", "Queen Victoria", "Elizabeth II", "Barack Obama", 
+    "Leonardo da Vinci", "Michelangelo", "Pablo Picasso", "Mozart", "Beethoven", "Shakespeare", "Plato", "Aristotle", "Socrates",
+
+    // Culture, Arts & Entertainment
+    "Mona Lisa", "Starry Night", "The Beatles", "Hip hop", "Jazz", "Rock and roll", "Anime", "Manga", "Harry Potter", 
+    "Star Wars", "Lord of the Rings", "Game of Thrones", "Marvel Cinematic Universe", "The Matrix", "The Godfather", 
+    "Pulp Fiction", "The Shawshank Redemption", "Schindler's List", "Forrest Gump", "Inception", "The Dark Knight", 
+    "Spirited Away", "Parasite", "Avatar", "Jurassic Park", "Jaws", "E.T.", "The Lion King", "Toy Story", "Frozen", 
+    "Minecraft", "Tetris", "Super Mario", "The Legend of Zelda", "Pokémon", "Grand Theft Auto", "Fortnite", "Pac-Man",
+    
+    // Nature & Geography
+    "Mount Everest", "Amazon Rainforest", "Sahara", "Antarctica", "Great Barrier Reef", "Grand Canyon", "Mariana Trench", 
+    "Nile", "Amazon River", "Himalayas", "Andes", "Alps", "Mediterranean Sea", "Pacific Ocean", "Atlantic Ocean", 
+    "Dead Sea", "Galapagos Islands", "Yellowstone National Park", "Machu Picchu", "Petra", "Lion", "Tiger", "Elephant", 
+    "Blue whale", "Dolphin", "Shark", "Eagle", "Penguin", "Octopus", "Spider", "Ant", "Bee", "Butterfly", "Dinosaur", 
+    "Tyrannosaurus", "Woolly mammoth", "Rose", "Oak", "Fungus", "Bacteria",
+    
+    // Places
+    "New York City", "London", "Paris", "Tokyo", "Rome", "Jerusalem", "Istanbul", "Beijing", "Moscow", "Sydney", 
+    "Rio de Janeiro", "Cairo", "Dubai", "Singapore", "Hong Kong", "United States", "China", "India", "Brazil", "Australia",
+    "Canada", "Japan", "Germany", "France", "Italy", "Spain", "Russia", "Mexico", "Egypt", "South Africa",
+    
+    // Concepts & Misc
+    "Philosophy", "Stoicism", "Nihilism", "Existentialism", "Ethics", "Logic", "Metaphysics", "Epistemology", 
+    "Consciousness", "Free will", "Happiness", "Love", "Time", "Mathematics", "Infinity", "Pi", "Golden ratio", 
+    "Fractal", "Game theory", "Paradox", "Democracy", "Capitalism", "Socialism", "Communism", "Feminism", 
+    "Environmentalism", "Psychology", "Dream", "Sleep", "Brain", "Heart", "Eye", "Color", "Light", "Sound", "Music",
+    "Chess", "Soccer", "Basketball", "Olympics", "Nobel Prize", "United Nations", "Human rights", "Coffee", "Tea", 
+    "Chocolate", "Pizza", "Sushi", "Beer", "Wine", "Cheese", "Bread", "Rice", "Potato",
+
+    // Niche, Weird & Interesting
+    "Voynich manuscript", "Antikythera mechanism", "Göbekli Tepe", "Emu War", "Dancing Plague of 1518", 
+    "Defenestration of Prague", "Great Molasses Flood", "Tanganyika laughter epidemic", "Mary Celeste", "Dyatlov Pass incident",
+    "Tunguska event", "Wow! signal", "Bloop", "Cicada 3301", "Toynbee tiles", "Polybius (urban legend)", 
+    "Max Headroom signal hijacking", "D. B. Cooper", "Tarrare", "Phineas Gage", "Emperor Norton", "Mike the Headless Chicken",
+    "Unsinkable Sam", "Wojtek (bear)", "Sergeant Stubby", "Hachikō", "Balto", "Laika", "Ham (chimpanzee)", "Dolly (sheep)",
+    "Ship of Theseus", "Brain in a vat", "Boltzmann brain", "Roko's basilisk", "Omphalos hypothesis", "Last Thursdayism",
+    "Russell's teapot", "Invisible Pink Unicorn", "Flying Spaghetti Monster", "Jedi census phenomenon", "Pastafarianism",
+    "Discordianism", "Church of the SubGenius", "Time Cube", "TempleOS", "Library of Babel", "Dead Internet theory",
+    "Phantom time hypothesis", "List of sexually active popes", "Toilet paper orientation"
   ];
   
   const container = document.getElementById('suggestions');
   const cf = document.getElementById('input'); // The commafield input
 
-  suggestions.forEach(topic => {
-    const el = document.createElement('div');
-    el.className = 'suggestion-item';
-    el.textContent = topic;
+  // Function to shuffle and render 20 random topics
+  function renderSuggestions() {
+    // Clear existing
+    container.innerHTML = '';
     
-    el.addEventListener('click', () => {
-      if (!el.classList.contains('disabled')) {
-        // Add to commafield
-        addItem(cf, topic);
-        // Grey out
-        el.classList.add('disabled');
-      }
+    // Randomize array using Fisher-Yates shuffle (or simple sort for brevity)
+    const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 20);
+    
+    selected.forEach(topic => {
+      const el = document.createElement('div');
+      el.className = 'suggestion-item';
+      el.textContent = topic;
+      
+      el.addEventListener('click', () => {
+        if (!el.classList.contains('disabled')) {
+          // Add to commafield
+          addItem(cf, topic);
+          // Grey out
+          el.classList.add('disabled');
+        }
+      });
+      
+      container.appendChild(el);
     });
-    
-    container.appendChild(el);
-  });
+  }
+
+  // Initial Render
+  renderSuggestions();
+
+  // Bind Refresh Button
+  const refreshBtn = document.getElementById('refresh-suggestions');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Add a rotation class to animate (optional, needs CSS) or just re-render
+      refreshBtn.style.transition = "transform 0.3s";
+      refreshBtn.style.transform = `rotate(${Math.random() * 360}deg)`;
+      renderSuggestions();
+    });
+  }
 }
 
 function bind() {
