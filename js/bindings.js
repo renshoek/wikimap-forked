@@ -1,5 +1,5 @@
 /* global nodes, network, isTouchDevice, shepherd, updateNodeValue */
-/* global expandNode, traceBack, resetProperties, go, goRandom, clearNetwork, unwrap */
+/* global expandNode, traceBack, resetProperties, go, goRandom, clearNetwork, unwrap, addItem */
 // This script contains (most of) the code that binds actions to events.
 
 let lastClickedNode = null;
@@ -50,6 +50,30 @@ function openPageForId(nodeId) {
   }
 }
 
+// Helper: Pick Random, Select it, Zoom to it (Do NOT open/expand)
+function selectAndZoomRandomNode() {
+  const allIds = nodes.getIds();
+  if (allIds.length > 0) {
+    // Pick random ID
+    const randomNodeId = allIds[Math.floor(Math.random() * allIds.length)];
+    
+    // Update global state
+    lastClickedNode = randomNodeId;
+    
+    // Select it visually (highlight yellow path)
+    traceBack(randomNodeId);
+    
+    // Zoom camera to it
+    network.focus(randomNodeId, {
+      scale: 1.0,
+      animation: {
+        duration: 1000,
+        easingFunction: "easeInOutQuad"
+      }
+    });
+  }
+}
+
 // NEW Helper: Open selected node, OR pick random, zoom, select.
 function openActiveOrRandomNode() {
   // Check if we currently have a selection
@@ -60,26 +84,7 @@ function openActiveOrRandomNode() {
     openPageForId(targetNode);
   } else {
     // CASE 2: No selection -> Pick Random, Zoom, Select (Do NOT open yet)
-    const allIds = nodes.getIds();
-    if (allIds.length > 0) {
-      // Pick random ID
-      const randomNodeId = allIds[Math.floor(Math.random() * allIds.length)];
-      
-      // Update global state
-      lastClickedNode = randomNodeId;
-      
-      // Select it visually (highlight yellow path)
-      traceBack(randomNodeId);
-      
-      // Zoom camera to it
-      network.focus(randomNodeId, {
-        scale: 1.0,
-        animation: {
-          duration: 1000,
-          easingFunction: "easeInOutQuad"
-        }
-      });
-    }
+    selectAndZoomRandomNode();
   }
 }
 
@@ -153,7 +158,40 @@ function bindNetwork() {
   network.on('oncontext', removeNodeEvent);
 }
 
+// --- NEW FUNCTION: Bind Suggestions ---
+function bindSuggestions() {
+  const suggestions = [
+    "Barack Obama", "The Beatles", "World War II", "Artificial Intelligence", "Mona Lisa",
+    "Mount Everest", "Leonardo da Vinci", "United States", "Google", "Minecraft",
+    "Psychology", "Black Hole", "Nelson Mandela", "The Moon", "Coffee",
+    "JavaScript", "Ancient Egypt", "Batman", "Albert Einstein", "DNA"
+  ];
+  
+  const container = document.getElementById('suggestions');
+  const cf = document.getElementById('input'); // The commafield input
+
+  suggestions.forEach(topic => {
+    const el = document.createElement('div');
+    el.className = 'suggestion-item';
+    el.textContent = topic;
+    
+    el.addEventListener('click', () => {
+      if (!el.classList.contains('disabled')) {
+        // Add to commafield
+        addItem(cf, topic);
+        // Grey out
+        el.classList.add('disabled');
+      }
+    });
+    
+    container.appendChild(el);
+  });
+}
+
 function bind() {
+  // Initialize suggested topics
+  bindSuggestions();
+
   // Prevent iOS scrolling
   document.addEventListener('touchmove', e => e.preventDefault());
 
@@ -179,19 +217,11 @@ function bind() {
   const clearButton = document.getElementById('clear');
   clearButton.addEventListener('click', clearNetwork);
 
-  // Bind tour start
+  // Bind tour start (from the Welcome Screen only)
   const tourbtn = document.getElementById('tourinit');
-  const helpButton = document.getElementById('help');
-  tourbtn.addEventListener('click', () => shepherd.start());
-  helpButton.addEventListener('click', () => shepherd.start());
-
-  // Bind GitHub button
-  const ghbutton = document.getElementById('github');
-  ghbutton.addEventListener('click', () => window.open('https://github.com/controversial/wikipedia-map', '_blank'));
-
-  // Bind About button
-  const aboutButton = document.getElementById('about');
-  aboutButton.addEventListener('click', () => window.open('https://github.com/controversial/wikipedia-map/blob/master/README.md#usage', '_blank'));
+  if (tourbtn) {
+    tourbtn.addEventListener('click', () => shepherd.start());
+  }
 
   // Bind Remove Selected Node button (Mobile Friendly)
   const removeSelectedButton = document.getElementById('remove-selected');
@@ -217,19 +247,30 @@ function bind() {
     });
   }
 
-  // Bind Expand 1 Random Nodes button
+  // Bind Zoom & Select Random Node button
+  const zoomRandomButton = document.getElementById('zoom-select-random');
+  if (zoomRandomButton) {
+    zoomRandomButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectAndZoomRandomNode();
+    });
+  }
+
+  // Bind Expand Button (Modified: Expands Selected if available, else Zoom/Select Random)
   const expandRandomButton = document.getElementById('expand-random');
   if (expandRandomButton) {
     expandRandomButton.addEventListener('click', (e) => {
       e.stopPropagation();
-      const allIds = nodes.getIds();
-      if (allIds.length > 0) {
-        // Shuffle array using sort with random
-        const shuffled = allIds.sort(() => 0.5 - Math.random());
-        // Pick top 1
-        const selected = shuffled.slice(0, 1);
-        // Expand them
-        selected.forEach(id => expandNode(id));
+
+      // Check if there is a selected node
+      const targetNode = window.selectedNode || lastClickedNode;
+
+      if (targetNode) {
+        // OPTION A: Expand the selected node
+        expandNode(targetNode);
+      } else {
+        // OPTION B: No selection -> Select and Zoom a random node (BUT DO NOT EXPAND)
+        selectAndZoomRandomNode();
       }
     });
   }
