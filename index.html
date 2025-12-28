@@ -1,313 +1,124 @@
-/* global nodes, network, isTouchDevice, shepherd, updateNodeValue */
-/* global expandNode, traceBack, resetProperties, go, goRandom, clearNetwork, unwrap, addItem */
-// This script contains (most of) the code that binds actions to events.
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta charset="UTF-8">
+  <meta name="description" content="Wikipedia Map is a tool for visualizing topics by exploring the connections between Wikipedia pages.">
+  <meta name="keywords" content="Wikipedia,Python,Javascript,HTML,CSS,Concepts,Information,Exploration,Visualization,Data,API,Web Scraping">
+  <meta name="author" content="Luke Deen Taylor">
+  <title>Wikipedia Map</title>
 
-let lastClickedNode = null;
+  <script data-skip-dnt="true" async defer src="https://sa.luk.ke/latest.js"></script>
+  <noscript><img src="https://sa.luk.ke/noscript.gif?ignore-dnt=true" alt="" referrerpolicy="no-referrer-when-downgrade" /></noscript>
 
-// Functions that will be used as bindings
-function expandEvent(params) { // Expand a node (with event handler)
-  if (params.nodes.length) { // Did the click occur on a node?
-    const page = params.nodes[0]; // The id of the node clicked
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shepherd/1.7.0/css/shepherd-theme-arrows.css" type="text/css" />
+  <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css" type="text/css" />
 
-    // On touch devices, 'hold' triggers this, so we expand immediately.
-    // On desktop, we require a second click on the selected node.
-    // Double-click triggers this logic effectively skipping the 'second click' wait because page === lastClickedNode
-    if (isTouchDevice || page === lastClickedNode) {
-      expandNode(page);
-    } else {
-      lastClickedNode = page;
-      traceBack(page);
-    }
-  } else {
-    lastClickedNode = null;
-    resetProperties();
-  }
-}
+  <link rel="stylesheet" href="./css/style.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/bar.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/buttongroup.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/shepherd-custom.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/commafield.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/welcome.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/modals.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/progress.css" type="text/css"/>
 
-function mobileTraceEvent(params) { // Trace back a node (with event handler)
-  if (params.nodes.length) { // Was the click on a node?
-    // The node clicked
-    const page = params.nodes[0];
-    
-    // UPDATE: Keep lastClickedNode in sync on mobile too
-    lastClickedNode = page;
-    
-    // Highlight in blue all nodes tracing back to central node
-    traceBack(page);
-  } else {
-    lastClickedNode = null;
-    resetProperties();
-  }
-}
 
-// Helper to open a page by ID
-function openPageForId(nodeId) {
-  if (nodeId && nodes.get(nodeId)) {
-    const page = encodeURIComponent(unwrap(nodes.get(nodeId).label));
-    // UPDATE: Use HTTPS to prevent mixed content errors
-    const url = `https://en.wikipedia.org/wiki/${page}`;
-    window.open(url, '_blank');
-  }
-}
+</head>
 
-// Helper: Zoom to a specific node (Used by the Find button)
-function zoomToNode(nodeId) {
-  network.focus(nodeId, {
-    scale: 1.0,
-    animation: {
-      duration: 1000,
-      easingFunction: "easeInOutQuad"
-    }
-  });
-}
+<body>
+  <div id="formbox" class="transparent-blur">
+    <div id="input" class="commafield" data-placeholder="Search Wikipedia..."> </div>
+    <button id="submit" type="button" title="Enter the name of a wikipedia page, then press 'Go'">
+      Go
+    </button>
+    <button id="random" type=button title="Random article">
+      <i class="icon ion-shuffle"></i>
+    </button>
+    <button id="clear" type="button" title="Clear the graph" style="display: none;">
+      <i class="icon ion-trash-a"></i>
+    </button>
+    <div style="display: flex; align-items: center; padding: 0 10px; font-size: 14px; background: rgba(255,255,255,0.4); white-space: nowrap;">
+      <label style="cursor: pointer; display: flex; align-items: center;" title="ON: Search whole article for people/characters. OFF: Search first paragraph only.">
+        <input type="checkbox" id="people-mode" style="margin-right: 5px; cursor: pointer;" checked>
+        People Only
+      </label>
+    </div>
+  </div>
 
-// Helper: Pick Random, Select it, Zoom to it
-function selectAndZoomRandomNode() {
-  const allIds = nodes.getIds();
-  if (allIds.length > 0) {
-    // Pick random ID
-    const randomNodeId = allIds[Math.floor(Math.random() * allIds.length)];
-    
-    // Update global state
-    lastClickedNode = randomNodeId;
-    
-    // Select it visually (highlight yellow path)
-    traceBack(randomNodeId);
-    
-    // Zoom camera to it
-    zoomToNode(randomNodeId);
-  }
-}
+  <div id="buttons" class="button-container transparent-blur">
+    <button id="zoom-select-random" type="button" title="Zoom in & Select Random Node">
+      <i class="icon ion-search"></i>
+    </button>
+    <button id="expand-random" type="button" title="Expand selected or find random node">
+      <i class="icon ion-network"></i>
+    </button>
+    <button id="open-wikipedia" type="button" title="Open selected article on Wikipedia">
+      <i class="icon ion-earth"></i>
+    </button>
+    <button id="remove-selected" type="button" title="Remove selected node">
+      <i class="icon ion-trash-b"></i>
+    </button>
+  </div>
 
-// NEW Helper: Pick Random and Select it (BUT DO NOT ZOOM)
-function selectRandomNode() {
-  const allIds = nodes.getIds();
-  if (allIds.length > 0) {
-    const randomNodeId = allIds[Math.floor(Math.random() * allIds.length)];
-    lastClickedNode = randomNodeId;
-    traceBack(randomNodeId);
-    return randomNodeId;
-  }
-  return null;
-}
+  <div id="loading" class="loading-hidden">
+    <i class="icon ion-load-c"></i>
+  </div>
 
-// NEW Helper: Open selected node, OR pick random (No Zoom)
-function openActiveOrRandomNode() {
-  // Check if we currently have a selection
-  const targetNode = window.selectedNode || lastClickedNode;
+  <div id="container" class="fullscreen">
+    <div id="info" class="transparent-blur">
+      <h1>Wikipedia Map</h1>
+      <p>A tool for exploring connections between topics.</p>
+      
+      <div class="controls-guide">
+        <h3>How to use</h3>
+        <ul>
+          <li><strong>Top Bar:</strong> Type topics (e.g., "Cats", "Physics") and press <b>Go</b>. Use <b>Random</b> for a surprise. Press <b>Delete</b> to clear the canvas.</li>
+          <li><strong>Controls (Bottom Right):</strong>
+            <ul>
+              <li><i class="icon ion-search"></i> <b>Find:</b> Zoom to the selected node or a random node.</li>
+              <li><i class="icon ion-network"></i> <b>Expand:</b> Open connections for the selected node.</li>
+              <li><i class="icon ion-earth"></i> <b>Wiki:</b> Open the article in a new tab.</li>
+              <li><i class="icon ion-trash-b"></i> <b>Delete:</b> Remove the selected node.</li>
+            </ul>
+          </li>
+          <li><strong>People Mode:</strong> Toggle in top bar to find only people/characters.</li>
+        </ul>
+      </div>
 
-  if (targetNode) {
-    // CASE 1: A node is already selected -> Just Open it (No Zoom)
-    openPageForId(targetNode);
-  } else {
-    // CASE 2: No selection -> Pick Random, Select, Open (No Zoom)
-    const randId = selectRandomNode();
-    if (randId) {
-      openPageForId(randId);
-    }
-  }
-}
+      <h3>Suggested Topics</h3>
+      <div id="suggestions" class="suggestion-grid">
+        </div>
+    </div>
+  </div>
 
-// Event handler for 't' key press
-function keyOpenPageEvent(e) {
-  // Ignore if typing in an input field
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-  if (e.key === 't' || e.key === 'T') {
-    openActiveOrRandomNode();
-  }
-}
 
-// Retained for double-click binding if needed, though we are switching double-click to expand
-function openPageEvent(params) {
-  if (params.nodes.length) {
-    openPageForId(params.nodes[0]);
-  }
-}
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.5.12/clipboard.min.js"> </script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.3.3/js/tether.min.js"> </script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/shepherd/1.7.0/js/shepherd.min.js"> </script>
 
-function removeNodeEvent(params) {
-  // Get the node under the mouse cursor using the pointer coordinates
-  const nodeId = network.getNodeAt(params.pointer.DOM);
-  if (nodeId) {
-    // CHANGED: Always reset properties if the graph is in a modified state.
-    // This prevents "stale" highlights/edges from persisting after a node is removed,
-    // which was causing the interface to get stuck.
-    if (!window.isReset) {
-      resetProperties();
-    }
+  <script type="text/javascript" src="./js/wikipedia_parse.js"></script>
+  <script type="text/javascript" src="./js/helpers.js"> </script>
+  <script type="text/javascript" src="./js/main_functions.js"> </script>
+  <script type="text/javascript" src="./js/help.js"> </script>
+  <script type="text/javascript" src="./js/main.js"> </script>
+  <script type="text/javascript" src="./js/network_serialize.js"> </script>
+  <script type="text/javascript" src="./js/bindings.js"> </script>
+  <script type="text/javascript" src="./js/commafield.js"> </script>
+  <script type="text/javascript" src="./js/loadsaved.js"> </script>
+  <script type="text/javascript" src="./js/modals.js"> </script>
+  <script type="text/javascript" src="./js/progress.js"> </script>
 
-    // Get neighbors before removing the node so we can update them later
-    const neighbors = network.getConnectedNodes(nodeId);
+  <script>
+    // Run events that need to happen on initialization.
+    window.onload = function () {
+      bind();
+      loadSaved();
+    };
+  </script>
+</body>
 
-    nodes.remove(nodeId);
-    // If we removed the node we were just about to expand, clear the state
-    if (lastClickedNode === nodeId) {
-      lastClickedNode = null;
-    }
-
-    // Update the size of the neighbors because they lost a connection
-    neighbors.forEach(neighborId => updateNodeValue(neighborId));
-  }
-}
-
-// Bind the network events
-function bindNetwork() {
-  if (isTouchDevice) { // Device has touchscreen
-    network.on('hold', expandEvent); // Long press to expand
-    network.on('click', mobileTraceEvent); // Highlight traceback on click
-  } else { // Device does not have touchscreen
-    network.on('click', expandEvent); // Expand on click
-    network.on('hoverNode', params => traceBack(params.node)); // Highlight traceback on hover
-    
-    // Logic to persist selection on blur
-    network.on('blurNode', () => {
-      if (lastClickedNode) {
-        // If a node is currently selected (clicked), revert highlight to it
-        traceBack(lastClickedNode);
-      } else {
-        // Otherwise reset to normal
-        resetProperties();
-      }
-    });
-  }
-
-  // Bind double-click to expandEvent instead of openPageEvent
-  network.on('doubleClick', expandEvent);
-
-  // Bind right-click to remove node
-  network.on('oncontext', removeNodeEvent);
-}
-
-// --- NEW FUNCTION: Bind Suggestions ---
-function bindSuggestions() {
-  const suggestions = [
-    "Barack Obama", "The Beatles", "World War II", "Artificial Intelligence", "Mona Lisa",
-    "Mount Everest", "Leonardo da Vinci", "United States", "Google", "Minecraft",
-    "Psychology", "Black Hole", "Nelson Mandela", "The Moon", "Coffee",
-    "JavaScript", "Ancient Egypt", "Batman", "Albert Einstein", "DNA"
-  ];
-  
-  const container = document.getElementById('suggestions');
-  const cf = document.getElementById('input'); // The commafield input
-
-  suggestions.forEach(topic => {
-    const el = document.createElement('div');
-    el.className = 'suggestion-item';
-    el.textContent = topic;
-    
-    el.addEventListener('click', () => {
-      if (!el.classList.contains('disabled')) {
-        // Add to commafield
-        addItem(cf, topic);
-        // Grey out
-        el.classList.add('disabled');
-      }
-    });
-    
-    container.appendChild(el);
-  });
-}
-
-function bind() {
-  // Initialize suggested topics
-  bindSuggestions();
-
-  // Prevent iOS scrolling
-  document.addEventListener('touchmove', e => e.preventDefault());
-
-  // Prevent default context menu to allow right-click to remove nodes
-  document.addEventListener('contextmenu', e => e.preventDefault());
-
-  // Bind key listener for 't' to open Wikipedia page
-  document.addEventListener('keydown', keyOpenPageEvent);
-
-  // Bind actions for search component.
-
-  const cf = document.querySelector('.commafield');
-  // Bind go button press
-  const submitButton = document.getElementById('submit');
-  submitButton.addEventListener('click', () => {
-    shepherd.cancel(); // Dismiss the tour if it is in progress
-    go();
-  });
-
-  const randomButton = document.getElementById('random');
-  randomButton.addEventListener('click', goRandom);
-
-  const clearButton = document.getElementById('clear');
-  clearButton.addEventListener('click', clearNetwork);
-
-  // Bind tour start (from the Welcome Screen only)
-  const tourbtn = document.getElementById('tourinit');
-  if (tourbtn) {
-    tourbtn.addEventListener('click', () => shepherd.start());
-  }
-
-  // Bind Remove Selected Node button (Mobile Friendly)
-  const removeSelectedButton = document.getElementById('remove-selected');
-  if (removeSelectedButton) {
-    removeSelectedButton.addEventListener('click', (e) => {
-      e.stopPropagation(); // Stop click from bubbling to network
-      // Use window.selectedNode (mobile/active hover) OR lastClickedNode (desktop selection)
-      // This ensures functionality even if the node was blurred (deselected) by moving the mouse to the button.
-      const nodeToRemove = window.selectedNode || lastClickedNode;
-      if (nodeToRemove) {
-        // Get neighbors before removing
-        const neighbors = network.getConnectedNodes(nodeToRemove);
-
-        // Reset properties BEFORE removing the node to avoid accessing a removed node in resetProperties
-        resetProperties(); 
-        nodes.remove(nodeToRemove);
-        window.selectedNode = null;
-        lastClickedNode = null;
-
-        // Update the size of the neighbors
-        neighbors.forEach(neighborId => updateNodeValue(neighborId));
-      }
-    });
-  }
-
-  // Bind Zoom & Select Random Node button
-  // MODIFIED: Zoom to active node if exists, else select/zoom random
-  const zoomRandomButton = document.getElementById('zoom-select-random');
-  if (zoomRandomButton) {
-    zoomRandomButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const targetNode = window.selectedNode || lastClickedNode;
-      if (targetNode) {
-        zoomToNode(targetNode);
-      } else {
-        selectAndZoomRandomNode();
-      }
-    });
-  }
-
-  // Bind Expand Button (Modified: NO ZOOM)
-  const expandRandomButton = document.getElementById('expand-random');
-  if (expandRandomButton) {
-    expandRandomButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      // Check if there is a selected node
-      const targetNode = window.selectedNode || lastClickedNode;
-
-      if (targetNode) {
-        // OPTION A: Expand the selected node (NO ZOOM)
-        expandNode(targetNode);
-      } else {
-        // OPTION B: No selection -> Select random node (BUT DO NOT EXPAND, NO ZOOM)
-        selectRandomNode();
-      }
-    });
-  }
-
-  // Bind Open Wikipedia button (Modified: NO ZOOM)
-  const openWikiButton = document.getElementById('open-wikipedia');
-  if (openWikiButton) {
-    openWikiButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation(); // Prevent click from bubbling
-      openActiveOrRandomNode();
-    });
-  }
-}
+</html>
