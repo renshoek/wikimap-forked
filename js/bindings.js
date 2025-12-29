@@ -105,15 +105,62 @@ function openActiveOrRandomNode() {
   }
 }
 
-// Event handler for 't' key press
-function keyOpenPageEvent(e) {
+// NEW Helper: Remove the currently active node
+function removeActiveNode() {
+  const nodeToRemove = window.selectedNode || lastClickedNode;
+  if (nodeToRemove) {
+    // Get neighbors before removing
+    const neighbors = network.getConnectedNodes(nodeToRemove);
+
+    // Reset properties BEFORE removing the node to avoid accessing a removed node in resetProperties
+    resetProperties(); 
+    nodes.remove(nodeToRemove);
+    window.selectedNode = null;
+    lastClickedNode = null;
+
+    // Update the size of the neighbors
+    neighbors.forEach(neighborId => updateNodeValue(neighborId));
+  }
+}
+
+// Global Key Handler
+function globalKeyHandler(e) {
   // Ignore if typing in an input field
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-  if (e.key === 't' || e.key === 'T') {
+  const key = e.key.toLowerCase();
+
+  // Z: Select random & zoom / zoom on selected
+  if (key === 'z') {
+    const targetNode = window.selectedNode || lastClickedNode;
+    if (targetNode) {
+      zoomToNode(targetNode);
+    } else {
+      selectAndZoomRandomNode();
+    }
+  }
+
+  // W / T: Select random / Open wiki on selected
+  if (key === 'w' || key === 't') {
     openActiveOrRandomNode();
   }
+
+  // E: Select random / Expand on selected
+  if (key === 'e') {
+    const targetNode = window.selectedNode || lastClickedNode;
+    if (targetNode) {
+      expandNode(targetNode);
+    } else {
+      selectRandomNode();
+    }
+  }
+
+  // D / Backspace / Delete: Delete selected node
+  if (key === 'd' || key === 'backspace' || key === 'delete') {
+    removeActiveNode();
+  }
 }
+
 
 // Retained for double-click binding if needed, though we are switching double-click to expand
 function openPageEvent(params) {
@@ -291,8 +338,8 @@ function bind() {
   // Prevent default context menu to allow right-click to remove nodes
   document.addEventListener('contextmenu', e => e.preventDefault());
 
-  // Bind key listener for 't' to open Wikipedia page
-  document.addEventListener('keydown', keyOpenPageEvent);
+  // Bind key listener for shortcuts
+  document.addEventListener('keydown', globalKeyHandler);
 
   // Bind actions for search component.
 
@@ -321,22 +368,7 @@ function bind() {
   if (removeSelectedButton) {
     removeSelectedButton.addEventListener('click', (e) => {
       e.stopPropagation(); // Stop click from bubbling to network
-      // Use window.selectedNode (mobile/active hover) OR lastClickedNode (desktop selection)
-      // This ensures functionality even if the node was blurred (deselected) by moving the mouse to the button.
-      const nodeToRemove = window.selectedNode || lastClickedNode;
-      if (nodeToRemove) {
-        // Get neighbors before removing
-        const neighbors = network.getConnectedNodes(nodeToRemove);
-
-        // Reset properties BEFORE removing the node to avoid accessing a removed node in resetProperties
-        resetProperties(); 
-        nodes.remove(nodeToRemove);
-        window.selectedNode = null;
-        lastClickedNode = null;
-
-        // Update the size of the neighbors
-        neighbors.forEach(neighborId => updateNodeValue(neighborId));
-      }
+      removeActiveNode();
     });
   }
 
